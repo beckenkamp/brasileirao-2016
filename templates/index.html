@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Brasileirão 2016</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+</head>
+<body>
+
+  <div class="container">
+
+    {% for message in get_flashed_messages() %}
+      <div class="alert alert-success" role="alert">{{ message }}</div>
+    {% endfor %}
+
+    <h1 class="pull-left">Brasileirão 2016</h1>
+    {% if passed %}
+      <div class="pull-right" style="top: 74px; position: relative; right: 10px;">
+        <span class="text-danger"><i class="glyphicon glyphicon-exclamation-sign"></i> Tabela desatualizada!</span>
+        <a href="{{ url_for('refresh_table', next=request.url) }}" class="btn btn-danger btn-sm" title="Atualizar Tabela">
+        <i class="glyphicon glyphicon-repeat"></i> Atualizar Resultados</a>
+      </div>
+    {% endif %}
+
+    <div class="clearfix"></div>
+
+    <div class="table-responsive">
+      <table class="table">
+
+        {% set round = 0 %}
+        {% for g in games.items %}
+          {% if round != g.the_round %}
+            <tr class="danger">
+              <td colspan="8" class="text-center">
+                {% if games.has_prev %}
+                  <a href="{{ url_for('table', page=games.prev_num) }}"><i class="glyphicon glyphicon-menu-left"></i></a>
+                {% endif %}
+                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                <strong>{{ g.the_round }}ª rodada</strong>
+                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                {% if games.has_next %}
+                  <a href="{{ url_for('table', page=games.next_num) }}"><i class="glyphicon glyphicon-menu-right"></i></a>
+                {% endif %}
+              </td>
+            </tr>
+          {% endif %}
+          
+          <tr>
+            <td class="text-right" width="200" style="font-weight: bold;">{{ g.home_team }}</td>
+            <td class="text-center" width="30">
+              {% if g.home_team_result != None %}
+                {{ g.home_team_result }}
+              {% else %}
+                &nbsp;
+              {% endif %}
+            </td>
+            <td class="text-center" width="10">x</td>
+            <td class="text-center" width="30">
+              {% if g.away_team_result != None %}
+                {{ g.away_team_result }}
+              {% else %}
+                &nbsp;
+              {% endif %}
+            </td>
+            <td class="text-left" width="200" style="font-weight: bold;">{{ g.away_team }}</td>
+          </tr>
+          <tr>
+            <td colspan="5" class="text-center" style="border-top:0; padding:0;">
+              <i>{{ g.date.strftime('%d/%m/%Y') }}</i>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="5" class="text-center" style="border-top:0; padding:0;">
+              <small>
+                {% if g.predicts_string %}
+                  {{ g.predicts_string }}<br>
+                  <small class="text-muted">
+                    Atualizado em {{ g.predicts_last_refresh_date.strftime('%d/%m/%Y %H:%M') }}
+                  </small>
+                {% endif %}
+
+                {% if g.home_team_result == None %}
+                  <a href="{{ url_for('predicts', id=g.id, next=request.url) }}" title="Atualizar Previsão"><i class="glyphicon glyphicon-refresh"></i></a>
+                {% endif %}
+              </small>
+            </td>
+          </tr>
+
+          {% set round = g.the_round %}
+
+        {% endfor %}
+      </table>
+    </div>
+
+  </div>
+
+</body>
+</html>
