@@ -42,6 +42,10 @@ class Table(db.Model):
 @app.route('/')
 def index():
     game = Table.query.filter(Table.date >= datetime.datetime.now()).first()
+
+    if not game:
+        return redirect(url_for('refresh_table'))
+
     return redirect(url_for('table', page=game.the_round))
 
 @app.route('/table/<int:page>')
@@ -95,7 +99,12 @@ def refresh_table():
                 db.session.add(table)
                 db.session.commit()
     flash('Tabela atualizada.')
-    return redirect(request.args.get('next'))
+
+    next_url = request.args.get('next', None)
+
+    if next_url:
+        return redirect(request.args.get('next'))
+    return redirect(url_for('index'))
 
 @app.route('/predicts/<int:id>')
 def predicts(id):
