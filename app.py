@@ -48,56 +48,64 @@ def index():
 
     return redirect(url_for('table', page=game.the_round))
 
+
 @app.route('/table/<int:page>')
 def table(page=1):
-    games = Table.query.filter().paginate(page, 10, False)
+    games = Table.query.filter().order_by('the_round').paginate(page, 10, False)
 
     passed = games.items[0].date < datetime.date.today() and games.items[0].home_team_result == None
 
     return render_template('index.html', games=games, passed=passed)
+
 
 @app.route('/refresh_table')
 def refresh_table():
     r = requests.get('http://www.tabeladobrasileirao.net/')
 
     soup = BeautifulSoup(r.text.encode('utf-8'), 'html.parser')
-    table = soup.find('table', id="jogos")
+    table_html = soup.find('tbody')
 
-    for row in table.findAll("tr")[1:]:
-        cells = row.findAll("td")
-        if len(cells) == 12:
-            game = {}
-            game['round'] = int(cells[0].find(text=True))
-            
-            date_string = cells[1].find(text=True)
-            date_string = '{}/{}'.format(date_string, '2016')
-            game['date'] = datetime.datetime.strptime(date_string, "%d/%m/%Y").date()
+    for row in table_html.findAll("tr"):
+        game = dict()
 
-            game['home_team'] = cells[4].find(text=True)
+        match = row.find('td', {"class": "match"})\
+                   .find('div', {"class": "game-round"})\
+                   .find(text=True)
+        game['round'] = int(match)
 
-            home_team_result = cells[5].find(text=True)
-            if home_team_result:
-                game['home_team_result'] = int(cells[5].find(text=True))
-            else:
-                game['home_team_result'] = None
+        date_string = row.find('td', {"class": "date"}).find(text=True)
+        date_string = '{}/{}'.format(date_string, '2016')
+        game['date'] = datetime.datetime.strptime(date_string, "%d/%m/%Y").date()
 
-            away_team_result = cells[7].find(text=True)
-            if away_team_result:
-                game['away_team_result'] = int(cells[7].find(text=True))
-            else:
-                game['away_team_result'] = None
-            
-            game['away_team'] = cells[8].find(text=True)
+        game['home_team'] = row.find('td', {"class": "match"})\
+                               .find('div', {"class": "home"})['title']
 
-            game_register = Table.query.filter_by(home_team=game['home_team'],
-                                                 away_team=game['away_team']).count()
+        result = row.findAll('div', {"class": "game-scoreboard-input"})
+        home_team_result = result[0].find(text=True)
+        away_team_result = result[2].find(text=True)
 
-            if game_register == 0:
-                table = Table(game['round'], game['date'], game['home_team'], game['home_team_result'], 
+        try:
+            game['home_team_result'] = int(home_team_result)
+            game['away_team_result'] = int(away_team_result)
+        except ValueError:
+            game['home_team_result'] = None
+            game['away_team_result'] = None
+
+        game['away_team'] = row.find('td', {"class": "match"})\
+                               .find('div', {"class": "visitor"})['title']
+
+        print(game)
+
+        game_register = Table.query.filter_by(home_team=game['home_team'],
+                                              away_team=game['away_team']).count()
+
+        if game_register == 0:
+            table = Table(game['round'], game['date'], game['home_team'], game['home_team_result'],
                           game['away_team'], game['away_team_result'])
 
-                db.session.add(table)
-                db.session.commit()
+            db.session.add(table)
+            db.session.commit()
+
     flash('Tabela atualizada.')
 
     next_url = request.args.get('next', None)
@@ -105,6 +113,7 @@ def refresh_table():
     if next_url:
         return redirect(request.args.get('next'))
     return redirect(url_for('index'))
+
 
 @app.route('/predicts/<int:id>')
 def predicts(id):
